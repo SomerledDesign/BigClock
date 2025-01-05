@@ -81,10 +81,11 @@
  ************************************************************************************/
 
 #include <Adafruit_NeoPixel.h>
+#include "font.h"
 
 #define LED_STRIP_PIN (5)
 #define AMBIENT_LIGHT_PIN (A0)
-
+#define DEBUG (1)
 
 // Debug MACRO
 
@@ -161,6 +162,7 @@ static const uint8_t colon2 = 57;  // the address of the second colon LED
 static const uint8_t colon3 = 204; // the address of the first colon LED
 static const uint8_t colon4 = 211; // the address of the second colon LED
 
+// Change this when you add more digits, obvi
 #define NUM_LEDS (70) // sizeof(descriptors)/sizeof(descriptors[0]))
 
 // Tell the NeoPixel library how many LEDs we will be using
@@ -323,55 +325,6 @@ void loop()
   }
 }
 
-/**
-* @brief A 7-Segment display 'font'.
-*
-* This is the font used to convert the values from 0-F into a displayable
-* character on a 7-segment display.  There is one value for each character.
-*
-* The relationship of the font bit positions to the LED display segments:
-*
-@verbatim
-   --1--
-  |     |
-  2     0
-  |     |
-   --3--
-  |     |
-  6     4
-  |     |
-   --5--
-@endverbatim
-*
-* For example: In order to display the number '1', the #0 and #4 segments need to be
-* turned on and the rest turned off.  Therefore the binary value 0010001
-* (hex 0x11) represents the segment values to display a '1'.
-*
-* The most significant bit is not used.
-*************************************************************************************/
-static const uint8_t font[] =
-    {
-        0b01110111, // 0
-        0b00010001, // 1
-        0b01101011, // 2
-        0b00111011, // 3
-        0b00011101, // 4
-        0b00111110, // 5
-        0b01111110, // 6
-        0b00010011, // 7
-        0b01111111, // 8
-        0b00111111, // 9
-        0b01011111, // A
-        0b01111100, // b
-        0b01100110, // C
-        0b01111001, // d
-        0b01101110, // E
-        0b01001110, // F
-        0b01101000, // c
-        0b01011000, // n
-        0b01111000, // o
-        0b00001000  // - (a dash symbol)
-};
 
 /**
  * @brief Set the value for a digit.
