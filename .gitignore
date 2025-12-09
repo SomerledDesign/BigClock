@@ -1,5 +1,5 @@
 .pio
 .vscode
-include/Secrets.txt
-
-
+Secrets.h
+timer5.ino
+Adafruit_NeoPixel

@@ -85,19 +85,32 @@
 
 #define LED_STRIP_PIN (5)
 #define AMBIENT_LIGHT_PIN (A0)
-#define DEBUG (1)
 
-// Debug MACRO
+#ifdef ESP32
+#include <esp32-hal-timer.h>
+#endif
 
-#if DEBUG
-  #define debugbegin(x)  	Serial.begin(x)
-  #define debug(x)		Serial.print(x)
-  #define debugln(x)		Serial.println(x)
-#else
-  #define debugbegin(x)
-  #define debug(x)
-  #define debugln(x)
-#endif // DEBUG
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Function declarations
+void initTimer();
+void counterReset();
+void digit(uint8_t i, uint16_t place, uint32_t c);
+void seg(uint16_t startingLed, uint16_t qty, uint32_t c);
+#ifndef ESP32
+ISR(TIMER1_COMPA_vect);
+#endif
 
 
 /**
@@ -170,6 +183,11 @@ static Adafruit_NeoPixel LEDstrip(NUM_LEDS, LED_STRIP_PIN, NEO_GRB + NEO_KHZ800)
 
 static volatile uint32_t myclock = 0; // The current 10HZ timer/counter value.
 
+#ifdef ESP32
+static hw_timer_t *timer = nullptr;
+static portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+#endif
+
 /**
  * Initialize things.
  *************************************************************************************/
@@ -178,21 +196,28 @@ void setup()
   LEDstrip.begin();
   LEDstrip.show(); // No colors set yet.  So this will set all pixels to 'off'.
 
-  // initialize serial communication (for debugging)
-  debugbegin(115200);
-
   counterReset();
 
   initTimer();
 }
 
 /**
- * Initialize timer-1 to operate in CTC mode to operate at 10HZ.
+ * Initialize hardware timer to operate at 10HZ.
  *************************************************************************************/
 void initTimer()
 {
-  // Do a google search on: arduino timer1 interrupt example for more details on this.
-
+#ifdef ESP32
+  // Use hardware timer 0 with a prescaler of 80 (1 MHz clock) and a 100 ms alarm.
+  timer = timerBegin(0, 80, true);
+  timerAttachInterrupt(timer, []() IRAM_ATTR {
+    portENTER_CRITICAL_ISR(&timerMux);
+    ++myclock;
+    portEXIT_CRITICAL_ISR(&timerMux);
+  }, true);
+  timerAlarmWrite(timer, 100000, true); // 100 ms period => 10 Hz
+  timerAlarmEnable(timer);
+#else
+  // AVR Timer1 setup retained for reference/compatibility.
   cli(); // disable all interrupts
 
   TCCR1A = 0;
@@ -204,15 +229,18 @@ void initTimer()
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
 
   sei(); // enable all interrupts
+#endif
 }
 
 /**
  * When timer-1 expires (10 times per second) this interrupt handler is called.
  *************************************************************************************/
+#ifndef ESP32
 ISR(TIMER1_COMPA_vect) // timer compare interrupt service routine
 {
   ++myclock; // increment the clock counter
 }
+#endif
 
 /** @brief The 'next' time to 'tick' the clock counter. */
 static uint32_t next = 0; // the 'next' time to 'tick' the clock counter
@@ -276,9 +304,15 @@ void loop()
 
   // uint32_t now = millis();
 
+#ifdef ESP32
+  portENTER_CRITICAL(&timerMux);
+  uint32_t now = myclock; // Do this with IRQs off in case the assignment is not atomic!
+  portEXIT_CRITICAL(&timerMux);
+#else
   cli();                  // disable all interrupts
   uint32_t now = myclock; // Do this with IRQs off in case the assignment is not atomic!
   sei();                  // enable all interrupts
+#endif
 
   if (now >= next)
   {
